@@ -137,7 +137,8 @@ ENDMODULE.
 FORM register_events_for_picts.
 
   CLEAR gt_event.
-  APPEND VALUE #( eventid = cl_gui_picture=>eventid_control_click ) TO gt_event.
+  APPEND VALUE #( appl_event = 'X'
+                  eventid    = cl_gui_picture=>eventid_control_click  ) TO gt_event.
   go_pict_control_1->set_registered_events( gt_event ).
 
   CLEAR gt_event.
@@ -164,8 +165,8 @@ ENDFORM.
 *--------------------------------------------------------------------*
 FORM set_disp_move_for_picts.
 
-    go_pict_control_1->set_display_mode( cl_gui_picture=>display_mode_normal_center ).
-    go_pict_control_2->set_display_mode( cl_gui_picture=>display_mode_stretch ).
+  go_pict_control_1->set_display_mode( cl_gui_picture=>display_mode_normal_center ).
+  go_pict_control_2->set_display_mode( cl_gui_picture=>display_mode_stretch ).
 
 ENDFORM.
 
@@ -174,19 +175,19 @@ ENDFORM.
 *--------------------------------------------------------------------*
 FORM show_pict1_from_sap_icons.
 
-    " Вывод из SAP Icon
-    go_pict_control_1->load_picture_from_sap_icons( icon_green_light ).
+  " Вывод из SAP Icon
+  go_pict_control_1->load_picture_from_sap_icons( icon_green_light ).
 
-    go_pict_control_1->load_picture_from_sap_icons(
-      EXPORTING
-        icon   = icon_green_light
-      EXCEPTIONS
-        error  = 1
-        OTHERS = 2 ).
+  go_pict_control_1->load_picture_from_sap_icons(
+    EXPORTING
+      icon   = icon_green_light
+    EXCEPTIONS
+      error  = 1
+      OTHERS = 2 ).
 
-    IF sy-subrc <> 0.
-      MESSAGE e001(00) WITH 'Ошибка при формировании отчёта'.
-    ENDIF.
+  IF sy-subrc <> 0.
+    MESSAGE e001(00) WITH 'Ошибка при формировании отчёта'.
+  ENDIF.
 
 ENDFORM.
 
@@ -195,19 +196,19 @@ ENDFORM.
 *--------------------------------------------------------------------*
 FORM load_pict1_from_sap_icons.
 
-    " Вывод из SAP Icon
-    go_pict_control_1->load_picture_from_sap_icons( icon_green_light ).
+  " Вывод из SAP Icon
+  go_pict_control_1->load_picture_from_sap_icons( icon_green_light ).
 
-    go_pict_control_1->load_picture_from_sap_icons(
-      EXPORTING
-        icon   = icon_green_light
-      EXCEPTIONS
-        error  = 1
-        OTHERS = 2 ).
+  go_pict_control_1->load_picture_from_sap_icons(
+    EXPORTING
+      icon   = icon_green_light
+    EXCEPTIONS
+      error  = 1
+      OTHERS = 2 ).
 
-    IF sy-subrc <> 0.
-      MESSAGE e001(00) WITH 'Ошибка при формировании отчёта'.
-    ENDIF.
+  IF sy-subrc <> 0.
+    MESSAGE e001(00) WITH 'Ошибка при формировании отчёта'.
+  ENDIF.
 
 ENDFORM.
 
@@ -216,35 +217,35 @@ ENDFORM.
 *--------------------------------------------------------------------*
 FORM load_pict2_from_url.
 
-    " Загрузка изображения через URL
-    " 1) Генерация URL-адреса с помощью Data Provider
-    CALL FUNCTION 'DP_PUBLISH_WWW_URL'
-      EXPORTING
-        objid                 = gc_pict_objid
-        lifetime              = cndp_lifetime_transaction
-      IMPORTING
-        url                   = gv_url
-      EXCEPTIONS
-        dp_error_publish      = 1
-        dp_invalid_parameters = 2
-        no_object             = 3
-        OTHERS                = 4.
+  " Загрузка изображения через URL
+  " 1) Генерация URL-адреса с помощью Data Provider
+  CALL FUNCTION 'DP_PUBLISH_WWW_URL'
+    EXPORTING
+      objid                 = gc_pict_objid
+      lifetime              = cndp_lifetime_transaction
+    IMPORTING
+      url                   = gv_url
+    EXCEPTIONS
+      dp_error_publish      = 1
+      dp_invalid_parameters = 2
+      no_object             = 3
+      OTHERS                = 4.
 
-    IF sy-subrc <> 0.
-      MESSAGE e001(00) WITH 'Ошибка при формировании отчёта'.
-    ENDIF.
+  IF sy-subrc <> 0.
+    MESSAGE e001(00) WITH 'Ошибка при формировании отчёта'.
+  ENDIF.
 
-    " 2) Генерация URL-адреса с помощью Data Provider
-    go_pict_control_2->load_picture_from_url_async(
-      EXPORTING
-        url    = gv_url
-      EXCEPTIONS
-        error  = 1
-        OTHERS = 2 ).
+  " 2) Генерация URL-адреса с помощью Data Provider
+  go_pict_control_2->load_picture_from_url_async(
+    EXPORTING
+      url    = gv_url
+    EXCEPTIONS
+      error  = 1
+      OTHERS = 2 ).
 
-    IF sy-subrc <> 0.
-      MESSAGE e001(00) WITH 'Ошибка при формировании отчёта'.
-    ENDIF.
+  IF sy-subrc <> 0.
+    MESSAGE e001(00) WITH 'Ошибка при формировании отчёта'.
+  ENDIF.
 
 ENDFORM.
 
@@ -258,7 +259,24 @@ MODULE user_command INPUT.
       LEAVE TO SCREEN 0.
 
     WHEN OTHERS.
-      cl_gui_cfw=>dispatch( ).
+      " В данном случае можно и без Dispatch. Но для некоторых ЭлУправления
+      " нужно целенаправлавлено вызывать PAI для appl-событий, чтобы
+      " запустить обработку
+      cl_gui_cfw=>dispatch(
+        IMPORTING
+          return_code = DATA(gv_ret_code) ).
+
+      CASE gv_ret_code.
+        WHEN cl_gui_cfw=>rc_found.
+          MESSAGE i001(00) WITH 'Событие успешно направлено в метод обработчика'.
+        WHEN cl_gui_cfw=>rc_unknown.
+          MESSAGE i001(00) WITH 'Событие не было зарегистрировано в списке событий'.
+        WHEN cl_gui_cfw=>rc_noevent.
+          MESSAGE i001(00) WITH 'В элементе управления не было инициировано ни одного события'.
+        WHEN cl_gui_cfw=>rc_nodispatch.
+          MESSAGE i001(00) WITH 'Событие не может быть назначен метод обработчика'.
+      ENDCASE.
+
   ENDCASE.
 
 ENDMODULE.
