@@ -1,0 +1,264 @@
+*--------------------------------------------------------------------*
+* Элемент управления Pictute Control
+*--------------------------------------------------------------------*
+* Можно загружать из URL, можно загружать из SAP Icon
+*--------------------------------------------------------------------*
+REPORT ztest_aagerasime_037.
+
+CLASS lcl_event_receiver DEFINITION DEFERRED.
+
+CONSTANTS:
+  " Изображение (.png) в SMW0
+  gc_pict_objid TYPE w3objid VALUE 'ZPICTURE_TEST'.
+
+DATA:
+  go_main_cont      TYPE REF TO cl_gui_docking_container,
+  go_splitter       TYPE REF TO cl_gui_splitter_container,
+  go_cont_left      TYPE REF TO cl_gui_container,
+  go_cont_right     TYPE REF TO cl_gui_container,
+  go_pict_control_1 TYPE REF TO cl_gui_picture,
+  go_pict_control_2 TYPE REF TO cl_gui_picture,
+  go_event_receiver TYPE REF TO lcl_event_receiver,
+  gt_event          TYPE cntl_simple_events,
+  gv_url            TYPE cndp_url.
+
+
+START-OF-SELECTION.
+  CALL SCREEN 0100.
+
+
+*--------------------------------------------------------------------*
+* CLASS lcl_event_receiver DEFINITION
+*--------------------------------------------------------------------*
+CLASS lcl_event_receiver DEFINITION.
+
+  PUBLIC SECTION.
+
+    METHODS:
+      on_control_click_pict1 FOR EVENT control_click OF cl_gui_picture
+        IMPORTING
+          mouse_pos_x
+          mouse_pos_y,
+      on_control_dblclick_pict2 FOR EVENT control_dblclick OF cl_gui_picture
+        IMPORTING
+          mouse_pos_x
+          mouse_pos_y.
+
+ENDCLASS.
+
+*--------------------------------------------------------------------*
+* CLASS lcl_event_receiver IMPLEMENTATION
+*--------------------------------------------------------------------*
+CLASS lcl_event_receiver IMPLEMENTATION.
+
+*--------------------------------------------------------------------*
+* METHOD on_control_click_pict1
+*--------------------------------------------------------------------*
+  METHOD on_control_click_pict1.
+    MESSAGE i000(00) WITH |Событие on_click для верхнего изображения: { mouse_pos_x }, { mouse_pos_y }|.
+  ENDMETHOD.
+
+*--------------------------------------------------------------------*
+* METHOD on_control_dblclick_pict2
+*--------------------------------------------------------------------*
+  METHOD on_control_dblclick_pict2.
+    MESSAGE i000(00) WITH |Событие on_double_click для нижнего изображения: { mouse_pos_x }, { mouse_pos_y }|.
+  ENDMETHOD.
+
+ENDCLASS.
+
+
+*--------------------------------------------------------------------*
+* MODULE create_pf_status OUTPUT
+*--------------------------------------------------------------------*
+MODULE create_pf_status OUTPUT.
+  SET PF-STATUS 'STATUS'.
+ENDMODULE.
+
+*--------------------------------------------------------------------*
+* MODULE create_containers OUTPUT
+*--------------------------------------------------------------------*
+MODULE create_containers OUTPUT.
+
+  IF go_main_cont IS NOT BOUND.
+
+    go_main_cont = NEW #( parent    = cl_gui_custom_container=>default_screen
+                          repid     = sy-repid
+                          dynnr     = sy-dynnr
+                          extension = '10000' ).
+
+    go_splitter = NEW #( parent  = go_main_cont
+                         rows    = 1
+                         columns = 2 ).
+
+    go_splitter->set_column_width(
+      EXPORTING
+        id    = 1
+        width = 15 ).
+
+    go_cont_left = go_splitter->get_container(
+      EXPORTING
+        row    = 1
+        column = 1 ).
+
+    go_cont_right = go_splitter->get_container(
+      EXPORTING
+        row    = 1
+        column = 2 ).
+
+  ENDIF.
+
+ENDMODULE.
+
+*--------------------------------------------------------------------*
+* MODULE create_pictuters OUTPUT
+*--------------------------------------------------------------------*
+MODULE create_pictuters OUTPUT.
+
+  IF go_pict_control_1 IS NOT BOUND.
+
+    go_pict_control_1 = NEW #( parent = go_cont_left ).
+    go_pict_control_2 = NEW #( parent = go_cont_right ).
+
+    PERFORM register_events_for_picts.
+    PERFORM set_handlers_for_picts.
+    PERFORM set_disp_move_for_picts.
+
+    PERFORM load_pict1_from_sap_icons.
+    PERFORM load_pict2_from_url.
+
+  ENDIF.
+
+ENDMODULE.
+
+*--------------------------------------------------------------------*
+* FORM register_events_for_picts
+*--------------------------------------------------------------------*
+FORM register_events_for_picts.
+
+  CLEAR gt_event.
+  APPEND VALUE #( eventid = cl_gui_picture=>eventid_control_click ) TO gt_event.
+  go_pict_control_1->set_registered_events( gt_event ).
+
+  CLEAR gt_event.
+  APPEND VALUE #( eventid = cl_gui_picture=>eventid_control_dblclick ) TO gt_event.
+  go_pict_control_2->set_registered_events( gt_event ).
+
+ENDFORM.
+
+*--------------------------------------------------------------------*
+* FORM set_handlers_for_picts
+*--------------------------------------------------------------------*
+FORM set_handlers_for_picts.
+
+  go_event_receiver = NEW #( ).
+
+  SET HANDLER:
+    go_event_receiver->on_control_click_pict1    FOR go_pict_control_1,
+    go_event_receiver->on_control_dblclick_pict2 FOR go_pict_control_2.
+
+ENDFORM.
+
+*--------------------------------------------------------------------*
+* FORM set_disp_move_for_picts
+*--------------------------------------------------------------------*
+FORM set_disp_move_for_picts.
+
+    go_pict_control_1->set_display_mode( cl_gui_picture=>display_mode_normal_center ).
+    go_pict_control_2->set_display_mode( cl_gui_picture=>display_mode_stretch ).
+
+ENDFORM.
+
+*--------------------------------------------------------------------*
+* FORM show_pict1_from_sap_icons
+*--------------------------------------------------------------------*
+FORM show_pict1_from_sap_icons.
+
+    " Вывод из SAP Icon
+    go_pict_control_1->load_picture_from_sap_icons( icon_green_light ).
+
+    go_pict_control_1->load_picture_from_sap_icons(
+      EXPORTING
+        icon   = icon_green_light
+      EXCEPTIONS
+        error  = 1
+        OTHERS = 2 ).
+
+    IF sy-subrc <> 0.
+      MESSAGE e001(00) WITH 'Ошибка при формировании отчёта'.
+    ENDIF.
+
+ENDFORM.
+
+*--------------------------------------------------------------------*
+* FORM load_pict1_from_sap_icons
+*--------------------------------------------------------------------*
+FORM load_pict1_from_sap_icons.
+
+    " Вывод из SAP Icon
+    go_pict_control_1->load_picture_from_sap_icons( icon_green_light ).
+
+    go_pict_control_1->load_picture_from_sap_icons(
+      EXPORTING
+        icon   = icon_green_light
+      EXCEPTIONS
+        error  = 1
+        OTHERS = 2 ).
+
+    IF sy-subrc <> 0.
+      MESSAGE e001(00) WITH 'Ошибка при формировании отчёта'.
+    ENDIF.
+
+ENDFORM.
+
+*--------------------------------------------------------------------*
+* FORM load_pict2_from_url
+*--------------------------------------------------------------------*
+FORM load_pict2_from_url.
+
+    " Загрузка изображения через URL
+    " 1) Генерация URL-адреса с помощью Data Provider
+    CALL FUNCTION 'DP_PUBLISH_WWW_URL'
+      EXPORTING
+        objid                 = gc_pict_objid
+        lifetime              = cndp_lifetime_transaction
+      IMPORTING
+        url                   = gv_url
+      EXCEPTIONS
+        dp_error_publish      = 1
+        dp_invalid_parameters = 2
+        no_object             = 3
+        OTHERS                = 4.
+
+    IF sy-subrc <> 0.
+      MESSAGE e001(00) WITH 'Ошибка при формировании отчёта'.
+    ENDIF.
+
+    " 2) Генерация URL-адреса с помощью Data Provider
+    go_pict_control_2->load_picture_from_url_async(
+      EXPORTING
+        url    = gv_url
+      EXCEPTIONS
+        error  = 1
+        OTHERS = 2 ).
+
+    IF sy-subrc <> 0.
+      MESSAGE e001(00) WITH 'Ошибка при формировании отчёта'.
+    ENDIF.
+
+ENDFORM.
+
+*--------------------------------------------------------------------*
+* MODULE user_command INPUT
+*--------------------------------------------------------------------*
+MODULE user_command INPUT.
+
+  CASE sy-ucomm.
+    WHEN 'BACK' OR 'EXIT' OR 'CANCEL'.
+      LEAVE TO SCREEN 0.
+
+    WHEN OTHERS.
+      cl_gui_cfw=>dispatch( ).
+  ENDCASE.
+
+ENDMODULE.
